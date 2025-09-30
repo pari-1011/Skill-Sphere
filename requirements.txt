@@ -1,0 +1,10 @@
+streamlit
+streamlit-lottie
+openai
+azure-ai-formrecognizer
+azure-core
+python-dotenv
+pandas
+folium
+streamlit_folium
+matplotlib
