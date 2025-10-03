@@ -42,12 +42,21 @@ class FreeAPIClient:
     def setup_gemini(self):
         """Setup Google Gemini API"""
         try:
-            api_key = st.secrets.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+            api_key = (
+                st.secrets.get("gemini_api_key")
+                or st.secrets.get("GEMINI_API_KEY")
+                or st.secrets.get("GOOGLE_API_KEY")
+                or os.environ.get("GEMINI_API_KEY")
+                or os.environ.get("GOOGLE_API_KEY")
+            )
             if not api_key:
                 raise KeyError("gemini_api_key missing")
             genai.configure(api_key=api_key)
             # Determine model: prefer secrets override, else pick from available supported names
-            model_name = st.secrets.get("gemini_model")
+            model_name = (
+                st.secrets.get("gemini_model")
+                or st.secrets.get("GEMINI_MODEL")
+            )
             if not model_name:
                 try:
                     preferred = ['models/gemini-2.5-flash', 'models/gemini-pro-latest', 'models/gemini-2.5-pro', 'models/gemini-2.0-flash']
@@ -63,25 +72,41 @@ class FreeAPIClient:
                 model_name = 'models/gemini-2.5-flash'
             self.model = genai.GenerativeModel(model_name)
         except Exception as e:
-            st.error(f"Failed to setup Gemini API: {e}")
+            # Do not show error here; allow fallback to other providers
             raise
     
     def setup_groq(self):
         """Setup Groq API"""
-        self.groq_api_key = st.secrets.get("groq_api_key") or os.environ.get("GROQ_API_KEY")
+        self.groq_api_key = (
+            st.secrets.get("groq_api_key")
+            or st.secrets.get("GROQ_API_KEY")
+            or os.environ.get("GROQ_API_KEY")
+        )
         if not self.groq_api_key:
             raise KeyError("groq_api_key missing")
         self.groq_url = "https://api.groq.com/openai/v1/chat/completions"
-        self.groq_model = st.secrets.get("groq_model", "llama-3.1-8b-instant")
+        self.groq_model = (
+            st.secrets.get("groq_model")
+            or st.secrets.get("GROQ_MODEL")
+            or "llama-3.1-8b-instant"
+        )
     
     def setup_cohere(self):
         """Setup Cohere API"""
-        self.cohere_api_key = st.secrets.get("cohere_api_key") or os.environ.get("COHERE_API_KEY")
+        self.cohere_api_key = (
+            st.secrets.get("cohere_api_key")
+            or st.secrets.get("COHERE_API_KEY")
+            or os.environ.get("COHERE_API_KEY")
+        )
         if not self.cohere_api_key:
             raise KeyError("cohere_api_key missing")
         # Use Chat API since Generate API was removed in 2025
         self.cohere_url = "https://api.cohere.ai/v1/chat"
-        self.cohere_model = st.secrets.get("cohere_model", "command-r7b")
+        self.cohere_model = (
+            st.secrets.get("cohere_model")
+            or st.secrets.get("COHERE_MODEL")
+            or "command-r7b"
+        )
     
     def chat_completion(self, messages: List[Dict], max_tokens: int = 500, temperature: float = 0.7) -> str:
         """Universal chat completion method"""
