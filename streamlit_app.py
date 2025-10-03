@@ -19,17 +19,24 @@ def load_lottiefile(filepath: str):
 
 lottie_career = load_lottiefile("animations/Animation - 1748757720975.json")
 
+# Feature flags to control visibility (hide without removing code)
+SHOW_GLOBAL_INSIGHTS = False
+SHOW_INDUSTRY_TRENDS = False
+
 PAGES = {
     "🏠 Home": None,
     "📄 Resume Matcher": resume_matcher,
-    "🌍 Global Insights": global_insights,
     "📚 Course Recommendations": course_recommendations,
     "📊 Career Path Explorer": career_path_explorer,
     "🧠 Skill Builder": skill_builder,
     "🧪 Mock Interview Prep": mock_interview,
     "📅 Hackathons & Internships": hackathons_internships,
-    "💡 Industry Trends": industry_trends,
 }
+
+if SHOW_GLOBAL_INSIGHTS:
+    PAGES["🌍 Global Insights"] = global_insights
+if SHOW_INDUSTRY_TRENDS:
+    PAGES["💡 Industry Trends"] = industry_trends
 
 st.sidebar.title("🧭 Navigate")
 selection = st.sidebar.radio("Go to", list(PAGES.keys()))
@@ -48,13 +55,11 @@ if selection == "🏠 Home":
             🛠️ Unlock your full potential through tools that help you:
             <ul>
                 <li>📄 Match your resume with job skills</li>
-                <li>🌍 Discover global career insights</li>
                 <li>📚 Get tailored course recommendations</li>
                 <li>📊 Explore career paths in-demand</li>
                 <li>🧠 Build and track in-demand skills</li>
                 <li>🧪 Practice with mock interview questions</li>
                 <li>📅 Find hackathons & internships</li>
-                <li>💡 Stay ahead with industry trends</li>
             </ul>
             </div>
             """,

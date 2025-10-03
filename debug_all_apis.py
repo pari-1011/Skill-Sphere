@@ -16,6 +16,7 @@ def test_groq_api():
     try:
         import streamlit as st
         api_key = st.secrets["groq_api_key"]
+        model = st.secrets.get("groq_model", "llama-3.1-8b-instant")
         
         url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {
@@ -24,7 +25,7 @@ def test_groq_api():
         }
         
         payload = {
-            "model": "llama3-8b-8192",
+            "model": model,
             "messages": [
                 {"role": "user", "content": "Say 'Hello from Groq!' and nothing else."}
             ],
@@ -32,7 +33,6 @@ def test_groq_api():
             "temperature": 0.7
         }
         
-        print(f"API Key: {api_key[:15]}...")
         response = requests.post(url, json=payload, headers=headers)
         print(f"Status Code: {response.status_code}")
         print(f"Response: {response.text[:500]}")
@@ -55,10 +55,37 @@ def test_gemini_api():
         api_key = st.secrets["gemini_api_key"]
         genai.configure(api_key=api_key)
         
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        response = model.generate_content("Say 'Hello from Gemini!' and nothing else.")
+        # Prefer a known-supported model; fallback to pro-latest
+        preferred = ['models/gemini-2.5-flash', 'models/gemini-pro-latest', 'models/gemini-2.5-pro']
+        chosen = None
+        try:
+            models = list(genai.list_models())
+            names = {m.name for m in models if 'generateContent' in getattr(m, 'supported_generation_methods', [])}
+            for cand in preferred:
+                if cand in names:
+                    chosen = cand
+                    break
+        except Exception:
+            pass
+        if chosen is None:
+            chosen = 'models/gemini-pro-latest'
         
-        return response.text.strip()
+        model = genai.GenerativeModel(chosen)
+        resp = model.generate_content("Say 'Hello from Gemini!' and nothing else.")
+        # Robust extract
+        try:
+            if hasattr(resp, 'candidates') and resp.candidates:
+                c = resp.candidates[0]
+                parts = getattr(getattr(c, 'content', None), 'parts', None)
+                if parts:
+                    texts = [getattr(p, 'text', '') for p in parts if getattr(p, 'text', None)]
+                    if texts:
+                        return ' '.join(texts).strip()
+        except Exception:
+            pass
+        if getattr(resp, 'text', None):
+            return resp.text.strip()
+        return 'Empty response from Gemini API'
         
     except Exception as e:
         return f"Exception: {str(e)}"
@@ -69,27 +96,29 @@ def test_cohere_api():
         import streamlit as st
         
         api_key = st.secrets["cohere_api_key"]
+        model_candidates = [st.secrets.get("cohere_model", "command-r7b"), "command-r-plus", "command-light", "command"]
         
-        url = "https://api.cohere.ai/v1/generate"
+        url = "https://api.cohere.ai/v1/chat"
         headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
         }
         
-        payload = {
-            "model": "command-light",
-            "prompt": "Say 'Hello from Cohere!' and nothing else.",
-            "max_tokens": 50,
-            "temperature": 0.7
-        }
-        
-        response = requests.post(url, json=payload, headers=headers)
-        
-        if response.status_code == 200:
-            result = response.json()
-            return result["generations"][0]["text"]
-        else:
-            return f"Error {response.status_code}: {response.text}"
+        for model in model_candidates:
+            payload = {
+                "model": model,
+                "message": "Say 'Hello from Cohere!' and nothing else.",
+                "temperature": 0.7
+            }
+            response = requests.post(url, json=payload, headers=headers)
+            if response.status_code == 200:
+                result = response.json()
+                return result.get("text") or f"Empty text from Cohere Chat (model {model})"
+            # Try next model on 404 or model removed
+            if response.status_code not in (404, 400):
+                # Some other error; break and report
+                return f"Error {response.status_code}: {response.text}"
+        return f"Error: No working Cohere chat model from candidates {model_candidates}"
             
     except Exception as e:
         return f"Exception: {str(e)}"

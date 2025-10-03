@@ -1,6 +1,9 @@
 streamlit
 streamlit-lottie
 openai
+google-generativeai
+requests
+PyPDF2
 azure-ai-formrecognizer
 azure-core
 python-dotenv

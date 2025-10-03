@@ -1,15 +1,7 @@
 import streamlit as st
-from openai import AzureOpenAI
-import json
 from streamlit_lottie import st_lottie
-
-client = AzureOpenAI(
-    api_key=st.secrets["azure_openai_api_key"],
-    azure_endpoint=st.secrets["azure_openai_endpoint"],
-    api_version=st.secrets["azure_openai_api_version"]
-)
-
-DEPLOYMENT = st.secrets["azure_openai_deployment"]
+import json
+from free_api_client import ask_ai
 
 def load_lottiefile(filepath: str):
     with open(filepath, "r") as f:
@@ -25,16 +17,12 @@ def get_career_paths_and_companies(domain):
         f"3. Add a line at the end that region-specific companies or information on startups and emerging organizations in that field, explore the Industry Trends feature of this app.\n"
         f"Format your answer clearly with headings."
     )
-    response = client.chat.completions.create(
-        model=DEPLOYMENT,
-        messages=[
-            {"role": "system", "content": "You are a helpful career counselor."},
-            {"role": "user", "content": prompt},
-        ],
-        max_completion_tokens=700,
-        temperature=0.7,
-    )
-    return response.choices[0].message.content
+    messages = [
+        {"role": "system", "content": "You are a helpful career counselor."},
+        {"role": "user", "content": prompt},
+    ]
+    response_text = ask_ai(messages, max_tokens=700, temperature=0.7)
+    return response_text
 
 def run():
     st.title("🚀 Career Path Explorer")

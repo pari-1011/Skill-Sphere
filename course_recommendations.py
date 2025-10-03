@@ -1,15 +1,7 @@
 import streamlit as st
-from openai import AzureOpenAI
 import json
 from streamlit_lottie import st_lottie
-
-client = AzureOpenAI(
-    api_key=st.secrets["azure_openai_api_key"],
-    azure_endpoint=st.secrets["azure_openai_endpoint"],
-    api_version=st.secrets["azure_openai_api_version"],
-)
-
-deployment = st.secrets["azure_openai_deployment"]
+from free_api_client import ask_ai
 
 def load_lottiefile(filepath: str):
     with open(filepath, "r") as f:
@@ -57,20 +49,11 @@ def run():
                 """
 
                 try:
-                    response = client.chat.completions.create(
-                        model=deployment,
-                        messages=[
-                            {"role": "system", "content": "You are a helpful course recommendation assistant."},
-                            {"role": "user", "content": prompt}
-                        ],
-                        max_tokens=800,
-                        temperature=1.0,
-                        top_p=1.0,
-                        frequency_penalty=0.0,
-                        presence_penalty=0.0
-                    )
-
-                    recommendations = response.choices[0].message.content
+                    messages = [
+                        {"role": "system", "content": "You are a helpful course recommendation assistant."},
+                        {"role": "user", "content": prompt}
+                    ]
+                    recommendations = ask_ai(messages, max_tokens=800, temperature=1.0)
                     st.markdown("### 📚 Recommended Courses")
                     st.markdown(recommendations)
 

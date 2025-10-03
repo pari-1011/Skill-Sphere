@@ -1,20 +1,10 @@
 import streamlit as st
 import requests
 import folium
-from openai import AzureOpenAI
 from streamlit_folium import st_folium
+from free_api_client import ask_ai
 
-azure_maps_key = st.secrets["azure_maps_key"]
-azure_openai_endpoint = st.secrets["azure_openai_endpoint"]
-azure_openai_api_key = st.secrets["azure_openai_api_key"]
-azure_openai_deployment = st.secrets["azure_openai_deployment"]
-azure_openai_api_version = st.secrets["azure_openai_api_version"]
-
-client = AzureOpenAI(
-    api_key=azure_openai_api_key,
-    azure_endpoint=azure_openai_endpoint,
-    api_version=azure_openai_api_version,
-)
+azure_maps_key = st.secrets.get("azure_maps_key", None)
 
 def search_place(query):
     url = (
@@ -36,16 +26,11 @@ def get_industry_trends(lat, lon):
         f"in the area with latitude {lat} and longitude {lon}. "
         f"Include companies, tech, job market, opportunities."
     )
-    response = client.chat.completions.create(
-        model=azure_openai_deployment,
-        messages=[
-            {"role": "system", "content": "You are a helpful industry trends assistant."},
-            {"role": "user", "content": prompt},
-        ],
-        max_completion_tokens=800,
-        temperature=0.7,
-    )
-    return response.choices[0].message.content
+    messages = [
+        {"role": "system", "content": "You are a helpful industry trends assistant."},
+        {"role": "user", "content": prompt},
+    ]
+    return ask_ai(messages, max_tokens=800, temperature=0.7)
 
 def run():
     st.title("🌍 Industry Trends Explorer with Search & Click Map")

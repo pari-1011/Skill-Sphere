@@ -1,35 +1,19 @@
 import streamlit as st
-from azure.core.credentials import AzureKeyCredential
-from azure.ai.formrecognizer import DocumentAnalysisClient
-from openai import AzureOpenAI
 import json
 from streamlit_lottie import st_lottie
-
-doc_key = st.secrets["azure_form_recognizer_key"]
-doc_endpoint = st.secrets["azure_form_recognizer_endpoint"]
-
-# Updated Azure OpenAI secrets
-openai_key = st.secrets["azure_openai_api_key"]
-openai_endpoint = st.secrets["azure_openai_endpoint"]
-deployment = st.secrets["azure_openai_deployment"]
-api_version = st.secrets["azure_openai_api_version"]
-
-doc_client = DocumentAnalysisClient(
-    endpoint=doc_endpoint,
-    credential=AzureKeyCredential(doc_key)
-)
-
-openai_client = AzureOpenAI(
-    api_key=openai_key,
-    azure_endpoint=openai_endpoint,
-    api_version=api_version,
-)
+from PyPDF2 import PdfReader
+from free_api_client import ask_ai
 
 def parse_resume(uploaded_file):
-    poller = doc_client.begin_analyze_document("prebuilt-read", document=uploaded_file)
-    result = poller.result()
-    full_text = " ".join([line.content for page in result.pages for line in page.lines])
-    return full_text
+    try:
+        reader = PdfReader(uploaded_file)
+        full_text = []
+        for page in reader.pages:
+            text = page.extract_text() or ""
+            full_text.append(text)
+        return " ".join(full_text)
+    except Exception as e:
+        raise RuntimeError(f"Failed to read PDF: {e}")
 
 def analyze_resume_content(resume_text):
     prompt = f"""
@@ -44,16 +28,11 @@ Provide:
 
 Respond clearly in a structured format.
 """
-    response = openai_client.chat.completions.create(
-        model=deployment,
-        messages=[
-            {"role": "system", "content": "You are a helpful and insightful career coach."},
-            {"role": "user", "content": prompt}
-        ],
-        max_completion_tokens=1000,
-        temperature=0.7
-    )
-    return response.choices[0].message.content
+    messages = [
+        {"role": "system", "content": "You are a helpful and insightful career coach."},
+        {"role": "user", "content": prompt}
+    ]
+    return ask_ai(messages, max_tokens=1000, temperature=0.7)
 
 def load_lottiefile(filepath: str):
     with open(filepath, "r") as f:

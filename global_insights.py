@@ -3,7 +3,7 @@ import folium
 from streamlit_folium import st_folium
 import requests
 
-azure_maps_key = st.secrets["azure_maps_key"]
+azure_maps_key = st.secrets.get("azure_maps_key", None)
 
 def geocode_place(place: str):
     """Return (lat, lon, formatted_address) for a place string."""
@@ -59,6 +59,10 @@ def run():
     """, unsafe_allow_html=True)
 
     st.title("🌍 Global Insights – Job Hot-Spots")
+
+    if not azure_maps_key:
+        st.warning("Azure Maps key is not configured. This feature requires an Azure Maps API key.")
+        st.stop()
 
     with st.container():
         st.markdown('<div class="centered-container">', unsafe_allow_html=True)
