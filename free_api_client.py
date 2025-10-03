@@ -2,6 +2,7 @@ import streamlit as st
 import google.generativeai as genai
 import requests
 import json
+import os
 from typing import Dict, List, Optional
 import time
 
@@ -14,20 +15,36 @@ class FreeAPIClient:
         self.setup_client()
     
     def setup_client(self):
-        """Setup the appropriate client based on provider"""
-        if self.api_provider == "gemini":
-            self.setup_gemini()
-        elif self.api_provider == "groq":
-            self.setup_groq()
-        elif self.api_provider == "cohere":
-            self.setup_cohere()
-        else:
-            raise ValueError(f"Unsupported API provider: {self.api_provider}")
+        """Setup the appropriate client based on provider. Falls back if a provider is misconfigured."""
+        order = [self.api_provider] + [p for p in ["gemini", "groq", "cohere"] if p != self.api_provider]
+        errors = {}
+        for prov in order:
+            try:
+                if prov == "gemini":
+                    self.setup_gemini()
+                elif prov == "groq":
+                    self.setup_groq()
+                elif prov == "cohere":
+                    self.setup_cohere()
+                self.api_provider = prov
+                return
+            except Exception as e:
+                errors[prov] = str(e)
+                continue
+        # If we reach here, none worked
+        msg = (
+            "No working AI provider configured. Set at least one of GEMINI_API_KEY/GOOGLE_API_KEY, GROQ_API_KEY, or COHERE_API_KEY "
+            "in environment variables or Streamlit secrets. Details: " + json.dumps(errors)
+        )
+        st.error(msg)
+        raise RuntimeError(msg)
     
     def setup_gemini(self):
         """Setup Google Gemini API"""
         try:
-            api_key = st.secrets["gemini_api_key"]
+            api_key = st.secrets.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+            if not api_key:
+                raise KeyError("gemini_api_key missing")
             genai.configure(api_key=api_key)
             # Determine model: prefer secrets override, else pick from available supported names
             model_name = st.secrets.get("gemini_model")
@@ -51,13 +68,17 @@ class FreeAPIClient:
     
     def setup_groq(self):
         """Setup Groq API"""
-        self.groq_api_key = st.secrets["groq_api_key"]
+        self.groq_api_key = st.secrets.get("groq_api_key") or os.environ.get("GROQ_API_KEY")
+        if not self.groq_api_key:
+            raise KeyError("groq_api_key missing")
         self.groq_url = "https://api.groq.com/openai/v1/chat/completions"
-        self.groq_model = st.secrets.get("groq_model", "llama3-8b-8192")
+        self.groq_model = st.secrets.get("groq_model", "llama-3.1-8b-instant")
     
     def setup_cohere(self):
         """Setup Cohere API"""
-        self.cohere_api_key = st.secrets["cohere_api_key"]
+        self.cohere_api_key = st.secrets.get("cohere_api_key") or os.environ.get("COHERE_API_KEY")
+        if not self.cohere_api_key:
+            raise KeyError("cohere_api_key missing")
         # Use Chat API since Generate API was removed in 2025
         self.cohere_url = "https://api.cohere.ai/v1/chat"
         self.cohere_model = st.secrets.get("cohere_model", "command-r7b")
